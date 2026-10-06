@@ -1,0 +1,18 @@
+[project]
+name = "secnet"
+version = "0.1.0"
+description = "A simple educational network security toolkit"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+secnet = "secnet:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["secnet*"]
+
+license = "MIT"
