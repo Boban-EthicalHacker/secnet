@@ -11,6 +11,7 @@ import asyncio
 
 from .scanner import scan_port, COMMON_PORTS, DEFAULT_TIMEOUT
 from .banner import grab_banner
+from .scanner import scan_ports_parallel
 
 def parse_ports(spec: str) -> list[int]:
     """
@@ -52,27 +53,24 @@ def parse_ports(spec: str) -> list[int]:
 
 async def scan_custom(host: str, ports: list[int], timeout: float) -> None:
     """
-    Scan a user-defined list of ports on a single host.
+    Scan a user-defined list of ports on a single host, in parallel.
     """
     total = len(ports)
     print(f"\n[*] Scanning {host} ({total} custom ports, timeout={timeout}s)")
 
-    open_count = 0
-    for port in ports:
-        is_open = await scan_port(host, port, timeout)
-        if is_open:
-            open_count += 1
-            # Ако знамо име сервиса из COMMON_PORTS, приказујемо га
-            service = COMMON_PORTS.get(port, "")
-            label = f"   ({service})" if service else ""
-            # Узимамо банер сервиса ако га шаље
-            banner = await grab_banner(host, port)
-            if banner:
-                print(f"[+] {host}:{port:<5} open{label} -> {banner}")
-            else:
-                print(f"[+] {host}:{port:<5} open{label}")
+    # Покрећемо паралелно скенирање
+    results = await scan_ports_parallel(host, ports, timeout)
 
-    print(f"\n[*] Done. {open_count} open port(s) found.")
+    # Исписујемо резултате
+    for port, banner in results:
+        service = COMMON_PORTS.get(port, "")
+        label = f"   ({service})" if service else ""
+        if banner:
+            print(f"[+] {host}:{port:<5} open{label} -> {banner}")
+        else:
+            print(f"[+] {host}:{port:<5} open{label}")
+
+    print(f"\n[*] Done. {len(results)} open port(s) found.")
 
 def run_custom() -> None:
     """

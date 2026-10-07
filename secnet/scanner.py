@@ -60,6 +60,38 @@ async def scan_port(host: str, port: int, timeout: float) -> bool:
     return True
 
 
+async def scan_ports_parallel(
+    host: str,
+    ports: list[int],
+    timeout: float,
+    concurrency: int = 200,
+) -> list[tuple[int, str]]:
+    """
+    Scan a list of ports in parallel.
+
+    Returns a list of (port, banner) tuples for open ports,
+    sorted by port number.
+    """
+    sem = asyncio.Semaphore(concurrency)
+    results: list[tuple[int, str]] = []
+
+    async def worker(port: int) -> None:
+        # Ограничавамо број истовремених веза
+        async with sem:
+            is_open = await scan_port(host, port, timeout)
+            if not is_open:
+                return
+            # Узимамо банер само за отворене портове
+            banner = await grab_banner(host, port)
+            results.append((port, banner))
+
+    # Правимо задатке за све портове одједном
+    tasks = [asyncio.create_task(worker(p)) for p in ports]
+    await asyncio.gather(*tasks)
+
+    return sorted(results)
+
+
 async def scan_common(host: str, timeout: float) -> None:
     """
     Scan the predefined list of common ports on a single host.
