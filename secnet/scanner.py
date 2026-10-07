@@ -10,6 +10,7 @@ import asyncio
 import socket
 from .info import gather_info
 from .banner import grab_banner
+from .export import build_report, save_report, default_filename
 
 # Подразумевани тајмаут за једну везу (у секундама)
 DEFAULT_TIMEOUT = 0.5
@@ -92,42 +93,80 @@ async def scan_ports_parallel(
     return sorted(results)
 
 
-async def scan_common(host: str, timeout: float) -> None:
+async def scan_common(host: str, timeout: float) -> list[tuple[int, str, str]]:
     """
     Scan the predefined list of common ports on a single host.
+
+    Returns a list of (port, service, banner) tuples for open ports.
     """
     total = len(COMMON_PORTS)
     print(f"\n[*] Scanning {host} ({total} common ports, timeout={timeout}s)")
 
-    open_count = 0
+    results: list[tuple[int, str, str]] = []
     for port, service in COMMON_PORTS.items():
         is_open = await scan_port(host, port, timeout)
         if is_open:
-            open_count += 1
-            # Узимамо банер сервиса ако га шаље
             banner = await grab_banner(host, port)
+            results.append((port, service, banner))
             if banner:
                 print(f"[+] {host}:{port:<5} open   ({service}) -> {banner}")
             else:
                 print(f"[+] {host}:{port:<5} open   ({service})")
 
-    print(f"\n[*] Done. {open_count} open port(s) found.")
+    print(f"\n[*] Done. {len(results)} open port(s) found.")
+    return results
+
+def _collect_target_info(host: str) -> dict:
+    """
+    Collect target info in a dict form for the JSON report.
+    """
+    from .info import resolve_host, ping_host
+
+    info = resolve_host(host)
+    result = {
+        "resolved_ip": info["ip"],
+        "reverse_dns": info["reverse"],
+    }
+    if info["ip"]:
+        stats = ping_host(info["ip"])
+        if stats:
+            result["ping"] = stats
+    return result
+
 
 def run() -> None:
     """
-    Interactive entry point called from the menu.
+    Interactive entry point for scan-common.
     """
     # Питамо корисника за циљ
     host = input("Target (IP or hostname): ").strip()
     if not host:
         print("[!] No target given.")
         return
-    
+
     # Приказујемо основне информације о мети пре скенирања
     gather_info(host)
 
     try:
-        asyncio.run(scan_common(host, DEFAULT_TIMEOUT))
+        results = asyncio.run(scan_common(host, DEFAULT_TIMEOUT))
     except KeyboardInterrupt:
-        # Дозвољавамо прекид скенирања без изласка из програма
         print("\n[!] Scan interrupted.")
+        return
+
+    # Питамо да ли корисник жели да сачува резултате
+    if not results:
+        return
+
+    answer = input("\nSave results to JSON? [y/N]: ").strip().lower()
+    if answer != "y":
+        return
+
+    # Градимо извештај и чувамо га
+    target_info = _collect_target_info(host)
+    report = build_report(host, target_info, "common", results)
+    filename = default_filename(host, "common")
+    try:
+        save_report(report, filename)
+        print(f"[+] Saved to {filename}")
+    except OSError as exc:
+        print(f"[!] Could not save: {exc}")
