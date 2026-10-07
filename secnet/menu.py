@@ -30,21 +30,25 @@ def show_banner() -> None:
 
 
 def show_menu() -> None:
-    # Приказујемо главни мени са опцијама
-    print("Main menu:")
-    print("  [1] Port scanner")
-    print("  [2] (coming soon)")
-    print("  [3] (coming soon)")
-    print("  [0] Exit")
+    # Приказујемо доступне команде
+    print("Available commands:")
+    print("  scan-common   Scan a predefined list of common ports")
+    print("  scan-custom   Scan a custom port, list, or range")
+    print("  help          Show detailed help")
+    print("  exit          Exit secnet")
 
 
 def handle_choice(choice: str) -> None:
     # Обрађујемо избор корисника
-    if choice == "1":
+    if choice == "scan-common":
         # Увозимо локално да избегнемо циклус у увозу
         from .scanner import run as run_scanner
         run_scanner()
-    elif choice in ("2", "3"):
-        print("\n[!] This option is not implemented yet.")
+    elif choice == "scan-custom":
+        from .custom_scanner import run_custom
+        run_custom()
+    elif choice == "help":
+        from .help import show_help
+        show_help()
     else:
-        print("\n[!] Invalid choice. Try again.")
+        print(f"\n[!] Unknown command: '{choice}'. Type 'help' for a list of commands.")
