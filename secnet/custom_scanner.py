@@ -10,7 +10,7 @@ Reuses scan_port and COMMON_PORTS from scanner.py.
 import asyncio
 
 from .scanner import scan_port, COMMON_PORTS, DEFAULT_TIMEOUT
-
+from .banner import grab_banner
 
 def parse_ports(spec: str) -> list[int]:
     """
@@ -65,10 +65,14 @@ async def scan_custom(host: str, ports: list[int], timeout: float) -> None:
             # Ако знамо име сервиса из COMMON_PORTS, приказујемо га
             service = COMMON_PORTS.get(port, "")
             label = f"   ({service})" if service else ""
-            print(f"[+] {host}:{port:<5} open{label}")
+            # Узимамо банер сервиса ако га шаље
+            banner = await grab_banner(host, port)
+            if banner:
+                print(f"[+] {host}:{port:<5} open{label} -> {banner}")
+            else:
+                print(f"[+] {host}:{port:<5} open{label}")
 
     print(f"\n[*] Done. {open_count} open port(s) found.")
-
 
 def run_custom() -> None:
     """
