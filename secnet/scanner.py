@@ -9,6 +9,7 @@ Scans a small, predefined list of common ports.
 import asyncio
 import socket
 from .info import gather_info
+from .banner import grab_banner
 
 # Подразумевани тајмаут за једну везу (у секундама)
 DEFAULT_TIMEOUT = 0.5
@@ -71,10 +72,14 @@ async def scan_common(host: str, timeout: float) -> None:
         is_open = await scan_port(host, port, timeout)
         if is_open:
             open_count += 1
-            print(f"[+] {host}:{port:<5} open   ({service})")
+            # Узимамо банер сервиса ако га шаље
+            banner = await grab_banner(host, port)
+            if banner:
+                print(f"[+] {host}:{port:<5} open   ({service}) -> {banner}")
+            else:
+                print(f"[+] {host}:{port:<5} open   ({service})")
 
     print(f"\n[*] Done. {open_count} open port(s) found.")
-
 
 def run() -> None:
     """
