@@ -4,6 +4,8 @@
 Module for the interactive menu and welcome screen.
 """
 
+from .colors import info, success, warn, bold, gray, error
+
 # ASCII банер алата
 BANNER = r"""
   ___  ___ ___ _  _ ___ _____
@@ -25,17 +27,17 @@ and authorized lab environments (e.g. TryHackMe, HTB).
 
 def show_banner() -> None:
     # Исписујемо банер и опис
-    print(BANNER)
+    print(info(BANNER))
     print(DESCRIPTION)
 
 
 def show_menu() -> None:
     # Приказујемо доступне команде
-    print("Available commands:")
-    print("  scan-common   Scan a predefined list of common ports")
-    print("  scan-custom   Scan a custom port, list, or range")
-    print("  help          Show detailed help")
-    print("  exit          Exit secnet")
+    print(bold("Available commands:"))
+    print(f"  {success('scan-common')}   Scan a predefined list of common ports")
+    print(f"  {success('scan-custom')}   Scan a custom port, list, or range")
+    print(f"  {success('help')}          Show detailed help")
+    print(f"  {success('exit')}          Exit secnet")
 
 
 def handle_choice(choice: str) -> None:
@@ -51,4 +53,4 @@ def handle_choice(choice: str) -> None:
         from .help import show_help
         show_help()
     else:
-        print(f"\n[!] Unknown command: '{choice}'. Type 'help' for a list of commands.")
+        print(error(f"[!] Unknown command: '{choice}'. Type 'help' for a list of commands."))

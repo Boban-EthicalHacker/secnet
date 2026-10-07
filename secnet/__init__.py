@@ -9,6 +9,8 @@ from .menu import show_banner, show_menu, handle_choice
 
 
 def main() -> int:
+    from .colors import warn
+
     # Приказујемо поздравну поруку и банер
     show_banner()
 
@@ -20,81 +22,30 @@ def main() -> int:
         try:
             choice = input("\nsecnet > ").strip()
         except (EOFError, KeyboardInterrupt):
-            # Ctrl+D или Ctrl+C — излазимо лепо
-            print("\n[!] Exiting secnet. Stay ethical.")
+            # Ctrl+D или Ctrl+C на промпту — излазимо лепо
+            print(warn("\n[!] Exiting secnet. Stay ethical."))
             return 0
 
         # Ако је корисник изабрао излаз, прекидамо петљу
         if choice in ("exit", "quit", "q"):
-            print("\n[!] Exiting secnet. Stay ethical.")
+            print(warn("\n[!] Exiting secnet. Stay ethical."))
             return 0
 
-        # Празна команда — не радимо ништа
+        # Празна команда — радимо ништа
         if not choice:
             continue
 
-        # Обрађујемо избор корисника
-        handle_choice(choice)
-    # Приказујемо поздравну поруку и банер
-    show_banner()
-
-    # Главна петља програма
-    while True:
+        # Обрађујемо избор корисника.
+        # KeyboardInterrupt унутар команде враћа нас у мени.
         try:
-            choice = input("\nsecnet > ").strip()
-        except (EOFError, KeyboardInterrupt):
-            # Ctrl+D или Ctrl+C — излазимо лепо
-            print("\n[!] Exiting secnet. Stay ethical.")
-            return 0
+            handle_choice(choice)
+        except KeyboardInterrupt:
+            print(warn("\n[!] Interrupted."))
 
-        # Ако је корисник изабрао излаз, прекидамо петљу
-        if choice in ("exit", "quit", "q"):
-            print("\n[!] Exiting secnet. Stay ethical.")
-            return 0
-
-        # Празна команда — приказујемо мени поново
-        if not choice:
-            show_menu()
-            continue
-
-        # Обрађујемо избор корисника
-        handle_choice(choice)
-    # Приказујемо поздравну поруку и банер
-    show_banner()
-
-    # Главна петља програма
-    while True:
-        show_menu()
-        try:
-            choice = input("\nsecnet > ").strip()
-        except (EOFError, KeyboardInterrupt):
-            # Ctrl+D или Ctrl+C — излазимо лепо
-            print("\n[!] Exiting secnet. Stay ethical.")
-            return 0
-
-        # Ако је корисник изабрао излаз, прекидамо петљу
-        if choice in ("0", "q", "quit", "exit"):
-            print("\n[!] Exiting secnet. Stay ethical.")
-            return 0
-
-        # Обрађујемо избор корисника
-        handle_choice(choice)
-    # Приказујемо поздравну поруку и банер
-    show_banner()
-
-    # Главна петља програма
-    while True:
-        show_menu()
-        try:
-            choice = input("\nsecnet > ").strip()
-        except EOFError:
-            print()
-            return 0
-
-        # Ако је корисник изабрао излаз, прекидамо петљу
-        if choice in ("0", "q", "quit", "exit"):
-            print("\n[!] Exiting secnet. Stay ethical.")
-            return 0
-
-        # Обрађујемо избор корисника
-        handle_choice(choice)
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        # Хватамо Ctrl+C и излазимо лепо
+        print("\n[!] Interrupted by user. Goodbye.")
+        sys.exit(130)

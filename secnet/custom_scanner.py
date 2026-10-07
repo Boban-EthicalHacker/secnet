@@ -11,6 +11,7 @@ import asyncio
 
 from .scanner import (
     COMMON_PORTS,
+    PORT_SETS,
     DEFAULT_TIMEOUT,
     collect_target_info,
     scan_ports_parallel,
@@ -22,19 +23,25 @@ def parse_ports(spec: str) -> list[int]:
     """
     Parse a port specification string into a list of ports.
 
-    Supported formats:
-        "80"            -> [80]
-        "22,80,443"     -> [22, 80, 443]
-        "1-1024"        -> [1, 2, ..., 1024]
-        "22,80,100-200" -> mixed
+    Accepts:
+        Numbers:      "80"          -> [80]
+        Lists:        "22,80,443"   -> [22, 80, 443]
+        Ranges:       "1-1024"      -> [1, 2, ..., 1024]
+        Named sets:   "web"         -> [80, 443, 8000, 8080, 8443, 8888]
+        Combination:  "web,22,100-200"
 
     Raises ValueError on invalid input.
     """
     ports: set[int] = set()
 
     for chunk in spec.split(","):
-        chunk = chunk.strip()
+        chunk = chunk.strip().lower()
         if not chunk:
+            continue
+
+        # Именовани сет, нпр. "web" или "db"
+        if chunk in PORT_SETS:
+            ports.update(PORT_SETS[chunk])
             continue
 
         # Опсег портова, нпр. 1-1024
@@ -48,7 +55,15 @@ def parse_ports(spec: str) -> list[int]:
             ports.update(range(start, end + 1))
         else:
             # Појединачна порт
-            port = int(chunk)
+            try:
+                port = int(chunk)
+            except ValueError:
+                # Није број и није именовани сет — пријављујемо
+                names = ", ".join(PORT_SETS.keys())
+                raise ValueError(
+                    f"Unknown port or set: '{chunk}'. "
+                    f"Named sets: {names}"
+                )
             if not (0 < port <= 65535):
                 raise ValueError(f"Port out of range: {port}")
             ports.add(port)
@@ -64,8 +79,10 @@ async def scan_custom(
 
     Returns a list of (port, service, banner) tuples for open ports.
     """
+    from .colors import info, success
+
     total = len(ports)
-    print(f"\n[*] Scanning {host} ({total} custom ports, timeout={timeout}s)")
+    print(info(f"\n[*] Scanning {host} ({total} custom ports, timeout={timeout}s)"))
 
     # Покрећемо паралелно скенирање
     raw_results = await scan_ports_parallel(host, ports, timeout)
@@ -80,42 +97,44 @@ async def scan_custom(
     for port, service, banner in results:
         label = f"   ({service})" if service else ""
         if banner:
-            print(f"[+] {host}:{port:<5} open{label} -> {banner}")
+            print(success(f"[+] {host}:{port:<5} open{label}") + f" -> {banner}")
         else:
-            print(f"[+] {host}:{port:<5} open{label}")
+            print(success(f"[+] {host}:{port:<5} open{label}"))
 
-    print(f"\n[*] Done. {len(results)} open port(s) found.")
+    print(info(f"\n[*] Done. {len(results)} open port(s) found."))
     return results
-
 
 def run_custom() -> None:
     """
     Interactive entry point for the custom port scanner.
     """
+    from .colors import success, warn, error
+
     # Питамо корисника за циљ
     host = input("Target (IP or hostname): ").strip()
     if not host:
-        print("[!] No target given.")
+        print(warn("[!] No target given."))
         return
 
-    # Питамо за порт или опсег
-    ports_input = input("Ports (e.g. 80, 22,80,443 or 1-1024): ").strip()
+    # Питамо за порт, опсег или именовани сет
+    ports_input = input(
+        "Ports (e.g. 80, 1-1024, web, db, mail, windows): "
+    ).strip()
     if not ports_input:
-        print("[!] No ports given.")
+        print(warn("[!] No ports given."))
         return
 
     # Парсирамо унос, хватамо грешке и враћамо се у мени
     try:
         ports = parse_ports(ports_input)
     except ValueError as exc:
-        print(f"[!] {exc}")
+        print(error(f"[!] {exc}"))
         return
 
     try:
         results = asyncio.run(scan_custom(host, ports, DEFAULT_TIMEOUT))
     except KeyboardInterrupt:
-        # Дозвољавамо прекид скенирања без изласка из програма
-        print("\n[!] Scan interrupted.")
+        print(warn("\n[!] Scan interrupted."))
         return
 
     # Питамо да ли корисник жели да сачува резултате
@@ -132,6 +151,6 @@ def run_custom() -> None:
     filename = default_filename(host, "custom")
     try:
         save_report(report, filename)
-        print(f"[+] Saved to {filename}")
+        print(success(f"[+] Saved to {filename}"))
     except OSError as exc:
-        print(f"[!] Could not save: {exc}")
+        print(error(f"[!] Could not save: {exc}"))

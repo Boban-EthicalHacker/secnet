@@ -36,6 +36,14 @@ COMMON_PORTS = {
     8443:  "HTTPS-Alt",
 }
 
+# Именовани сетови портова за брзи унос
+PORT_SETS = {
+    "web":     [80, 443, 8000, 8080, 8443, 8888],
+    "db":      [1433, 1521, 3306, 5432, 6379, 27017],
+    "mail":    [25, 110, 143, 465, 587, 993, 995],
+    "windows": [135, 139, 445, 3389, 5985],
+}
+
 
 async def scan_port(host: str, port: int, timeout: float) -> bool:
     """
@@ -99,8 +107,10 @@ async def scan_common(host: str, timeout: float) -> list[tuple[int, str, str]]:
 
     Returns a list of (port, service, banner) tuples for open ports.
     """
+    from .colors import info, success, warn
+
     total = len(COMMON_PORTS)
-    print(f"\n[*] Scanning {host} ({total} common ports, timeout={timeout}s)")
+    print(info(f"\n[*] Scanning {host} ({total} common ports, timeout={timeout}s)"))
 
     results: list[tuple[int, str, str]] = []
     for port, service in COMMON_PORTS.items():
@@ -109,12 +119,13 @@ async def scan_common(host: str, timeout: float) -> list[tuple[int, str, str]]:
             banner = await grab_banner(host, port)
             results.append((port, service, banner))
             if banner:
-                print(f"[+] {host}:{port:<5} open   ({service}) -> {banner}")
+                print(success(f"[+] {host}:{port:<5} open   ({service})") + f" -> {banner}")
             else:
-                print(f"[+] {host}:{port:<5} open   ({service})")
+                print(success(f"[+] {host}:{port:<5} open   ({service})"))
 
-    print(f"\n[*] Done. {len(results)} open port(s) found.")
+    print(info(f"\n[*] Done. {len(results)} open port(s) found."))
     return results
+
 
 def collect_target_info(host: str) -> dict:
     """
@@ -138,10 +149,12 @@ def run() -> None:
     """
     Interactive entry point for scan-common.
     """
+    from .colors import success, warn, error
+
     # Питамо корисника за циљ
     host = input("Target (IP or hostname): ").strip()
     if not host:
-        print("[!] No target given.")
+        print(warn("[!] No target given."))
         return
 
     # Приказујемо основне информације о мети пре скенирања
@@ -150,7 +163,7 @@ def run() -> None:
     try:
         results = asyncio.run(scan_common(host, DEFAULT_TIMEOUT))
     except KeyboardInterrupt:
-        print("\n[!] Scan interrupted.")
+        print(warn("\n[!] Scan interrupted."))
         return
 
     # Питамо да ли корисник жели да сачува резултате
@@ -167,6 +180,6 @@ def run() -> None:
     filename = default_filename(host, "common")
     try:
         save_report(report, filename)
-        print(f"[+] Saved to {filename}")
+        print(success(f"[+] Saved to {filename}"))
     except OSError as exc:
-        print(f"[!] Could not save: {exc}")
+        print(error(f"[!] Could not save: {exc}"))

@@ -66,33 +66,35 @@ def gather_info(host: str) -> None:
     """
     Print basic information about the target host.
     """
-    info = resolve_host(host)
+    from .colors import info, success, warn, gray
 
-    print("\n[*] Target information")
-    print(f"    Host:        {info['host']}")
+    data = resolve_host(host)
 
-    if not info["ip"]:
-        print("    [!] Could not resolve hostname.")
+    print(info("\n[*] Target information"))
+    print(f"    {gray('Host:')}        {data['host']}")
+
+    if not data["ip"]:
+        print(warn("    [!] Could not resolve hostname."))
         return
 
-    print(f"    Resolved IP: {info['ip']}")
+    print(f"    {gray('Resolved IP:')} {data['ip']}")
 
-    if info["reverse"]:
-        print(f"    Reverse DNS: {info['reverse']}")
+    if data["reverse"]:
+        print(f"    {gray('Reverse DNS:')} {data['reverse']}")
     else:
-        print("    Reverse DNS: (none)")
+        print(f"    {gray('Reverse DNS:')} (none)")
 
     # Пингујемо само ако смо добили IP
-    stats = ping_host(info["ip"])
+    stats = ping_host(data["ip"])
     if not stats:
-        print("    Ping:        (unreachable)")
+        print(f"    {gray('Ping:')}        (unreachable)")
         return
 
     print(
-        f"    Ping:        "
+        f"    {gray('Ping:')}        "
         f"min {stats['min_rtt']:.2f} ms / "
         f"avg {stats['avg_rtt']:.2f} ms / "
         f"max {stats['max_rtt']:.2f} ms"
     )
-    print(f"    Packet loss: {stats['packet_loss'] * 100:.0f}%")
-    print(f"    Jitter:      {stats['jitter']:.2f} ms")
+    print(f"    {gray('Packet loss:')} {stats['packet_loss'] * 100:.0f}%")
+    print(f"    {gray('Jitter:')}      {stats['jitter']:.2f} ms")
