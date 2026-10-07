@@ -3,7 +3,9 @@ name = "secnet"
 version = "0.1.0"
 description = "A simple educational network security toolkit"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "icmplib",
+]
 
 [project.scripts]
 secnet = "secnet:main"

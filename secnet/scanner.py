@@ -8,7 +8,7 @@ Scans a small, predefined list of common ports.
 
 import asyncio
 import socket
-
+from .info import gather_info
 
 # Подразумевани тајмаут за једну везу (у секундама)
 DEFAULT_TIMEOUT = 0.5
@@ -85,6 +85,9 @@ def run() -> None:
     if not host:
         print("[!] No target given.")
         return
+    
+    # Приказујемо основне информације о мети пре скенирања
+    gather_info(host)
 
     try:
         asyncio.run(scan_common(host, DEFAULT_TIMEOUT))
