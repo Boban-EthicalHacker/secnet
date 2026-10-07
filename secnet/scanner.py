@@ -116,7 +116,7 @@ async def scan_common(host: str, timeout: float) -> list[tuple[int, str, str]]:
     print(f"\n[*] Done. {len(results)} open port(s) found.")
     return results
 
-def _collect_target_info(host: str) -> dict:
+def collect_target_info(host: str) -> dict:
     """
     Collect target info in a dict form for the JSON report.
     """
@@ -162,7 +162,7 @@ def run() -> None:
         return
 
     # Градимо извештај и чувамо га
-    target_info = _collect_target_info(host)
+    target_info = collect_target_info(host)
     report = build_report(host, target_info, "common", results)
     filename = default_filename(host, "common")
     try:

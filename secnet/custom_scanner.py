@@ -9,9 +9,14 @@ Reuses scan_port and COMMON_PORTS from scanner.py.
 
 import asyncio
 
-from .scanner import scan_port, COMMON_PORTS, DEFAULT_TIMEOUT
-from .banner import grab_banner
-from .scanner import scan_ports_parallel
+from .scanner import (
+    COMMON_PORTS,
+    DEFAULT_TIMEOUT,
+    collect_target_info,
+    scan_ports_parallel,
+)
+from .export import build_report, save_report, default_filename
+
 
 def parse_ports(spec: str) -> list[int]:
     """
@@ -51,19 +56,28 @@ def parse_ports(spec: str) -> list[int]:
     return sorted(ports)
 
 
-async def scan_custom(host: str, ports: list[int], timeout: float) -> None:
+async def scan_custom(
+    host: str, ports: list[int], timeout: float
+) -> list[tuple[int, str, str]]:
     """
     Scan a user-defined list of ports on a single host, in parallel.
+
+    Returns a list of (port, service, banner) tuples for open ports.
     """
     total = len(ports)
     print(f"\n[*] Scanning {host} ({total} custom ports, timeout={timeout}s)")
 
     # Покрећемо паралелно скенирање
-    results = await scan_ports_parallel(host, ports, timeout)
+    raw_results = await scan_ports_parallel(host, ports, timeout)
+
+    # Додајемо име сервиса из COMMON_PORTS (ако постоји)
+    results: list[tuple[int, str, str]] = []
+    for port, banner in raw_results:
+        service = COMMON_PORTS.get(port, "")
+        results.append((port, service, banner))
 
     # Исписујемо резултате
-    for port, banner in results:
-        service = COMMON_PORTS.get(port, "")
+    for port, service, banner in results:
         label = f"   ({service})" if service else ""
         if banner:
             print(f"[+] {host}:{port:<5} open{label} -> {banner}")
@@ -71,6 +85,8 @@ async def scan_custom(host: str, ports: list[int], timeout: float) -> None:
             print(f"[+] {host}:{port:<5} open{label}")
 
     print(f"\n[*] Done. {len(results)} open port(s) found.")
+    return results
+
 
 def run_custom() -> None:
     """
@@ -96,7 +112,26 @@ def run_custom() -> None:
         return
 
     try:
-        asyncio.run(scan_custom(host, ports, DEFAULT_TIMEOUT))
+        results = asyncio.run(scan_custom(host, ports, DEFAULT_TIMEOUT))
     except KeyboardInterrupt:
         # Дозвољавамо прекид скенирања без изласка из програма
         print("\n[!] Scan interrupted.")
+        return
+
+    # Питамо да ли корисник жели да сачува резултате
+    if not results:
+        return
+
+    answer = input("\nSave results to JSON? [y/N]: ").strip().lower()
+    if answer != "y":
+        return
+
+    # Градимо извештај и чувамо га
+    target_info = collect_target_info(host)
+    report = build_report(host, target_info, "custom", results)
+    filename = default_filename(host, "custom")
+    try:
+        save_report(report, filename)
+        print(f"[+] Saved to {filename}")
+    except OSError as exc:
+        print(f"[!] Could not save: {exc}")
